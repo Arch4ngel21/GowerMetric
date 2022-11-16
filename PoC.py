@@ -1,6 +1,7 @@
 import os.path
 from os import listdir
 from os.path import isfile
+from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
@@ -9,15 +10,13 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 import sklearn.utils.validation
-from scipy.spatial.distance import pdist, squareform
+from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import (
     linkage,
-    dendrogram,
     cophenet,
-    single,
     fcluster,
 )
-from scipy.optimize import minimize, OptimizeResult
+from scipy.optimize import minimize
 from sklearn.decomposition import PCA
 from sklearn.metrics import (
     silhouette_score,
@@ -27,7 +26,7 @@ from sklearn.metrics import (
 from sklearn.model_selection import train_test_split
 from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
 from sklearn.preprocessing import OrdinalEncoder, StandardScaler
-from tqdm import tqdm, trange
+from tqdm import tqdm
 
 
 class DataType(Enum):
@@ -66,18 +65,17 @@ class GowerMetric:
         ratio_scale_normalization="range",
         _precomputed_weights_file="",
         _cpcc_threshold=None,
-        _save_computed_weights=False,
+        _save_computed_weights=True,
     ):
         self.dtypes = dtypes  # initialize with np.array of column data types
         self.ranges_: List  # values of ranges in ._ratio_scale() (iqr or traditional range)
         self.h_: List  # h values in ._ratio_scale()
         self.n_features_in_: int
-        self._sigma_sum = 0  # counter for existing values in vector
         self.ratio_scale_normalization: str = ratio_scale_normalization
         self._similarities_map = {
-            DataType.BINARY_SYMMETRIC: self._bin_sym,
+            DataType.BINARY_SYMMETRIC: self._cat_nom_bin_sym,
             DataType.BINARY_ASYMMETRIC: self._bin_asym,
-            DataType.CATEGORICAL_NOMINAL: self._cat_nom,
+            DataType.CATEGORICAL_NOMINAL: self._cat_nom_bin_sym,
             DataType.RATIO_SCALE: self._ratio_scale,
         }
 
@@ -97,39 +95,51 @@ class GowerMetric:
             print(self.n_features_in_, len(vector_1), len(vector_2))
             return -1
 
+        cat_nom_bin_sym_cols = np.where(
+            (self.dtypes == DataType.CATEGORICAL_NOMINAL)
+            | (self.dtypes == DataType.BINARY_SYMMETRIC)
+        )
+        ratio_cols = np.where(self.dtypes == DataType.RATIO_SCALE)
+        bin_asym_cols = np.where(self.dtypes == DataType.BINARY_ASYMMETRIC)
+
         dist_func = lambda similarity, a, b: 1 - similarity(a, b)
         dist_func_ratio = lambda similarity, a, b, r, h: 1 - similarity(
             a, b, r, h
         )
+
         distances = [
-            (
-                dist_func(
-                    self._similarities_map[self.dtypes[i]],
-                    vector_1[i],
-                    vector_2[i],
-                )
-                if self.dtypes[i] != DataType.RATIO_SCALE
-                else dist_func_ratio(
-                    self._similarities_map[self.dtypes[i]],
-                    vector_1[i],
-                    vector_2[i],
-                    self.ranges_[i],
-                    self.h_[i],
-                )
-            )
-            * self.weights_[i]
-            for i in range(self.n_features_in_)
+            self.weights_[cat_nom_bin_sym_cols]
+            * dist_func(
+                self._cat_nom_bin_sym,
+                np.array(vector_1[cat_nom_bin_sym_cols]),
+                np.array(vector_2[cat_nom_bin_sym_cols]),
+            ),
+            self.weights_[ratio_cols]
+            * dist_func_ratio(
+                self._ratio_scale,
+                np.array(vector_1[ratio_cols]),
+                np.array(vector_2[ratio_cols]),
+                np.array(self.ranges_[ratio_cols]),
+                np.array(self.h_[ratio_cols]),
+            ),
+            self.weights_[bin_asym_cols]
+            * dist_func(
+                self._bin_asym,
+                np.array(vector_1[bin_asym_cols]),
+                np.array(vector_2[bin_asym_cols]),
+            ),
         ]
+
+        distances = np.concatenate(distances)
         distance = np.sum(distances)
 
-        distance /= self._sigma_sum
-        self._reset_sigma()
+        distance /= vector_1.size
 
         return distance
 
     def fit(self, X):
-        self.ranges_ = [0 for _ in range(self.dtypes.size)]
-        self.h_ = [0 for _ in range(self.dtypes.size)]
+        self.ranges_ = np.zeros(self.dtypes.size)
+        self.h_ = np.zeros(self.dtypes.size)
         self.n_features_in_ = self.dtypes.size
 
         for i in range(self.dtypes.size):
@@ -163,44 +173,64 @@ class GowerMetric:
         else:
             self._load_weights(self._precomputed_weights_file)
 
-    def _bin_sym(self, value_1, value_2) -> float:
-        self._add_sigma()
-        return 1.0 if np.isclose(value_1, value_2) else 0.0
+        self._select_number_of_clusters(X)
 
-    def _bin_asym(self, value_1, value_2) -> float:
-        if np.isclose(value_1, value_2) and np.isclose(value_1, 1.0):
-            self._add_sigma()
-            return 1.0
+    def _bin_asym(
+        self, vector_1: np.ndarray, vector_2: np.ndarray
+    ) -> np.ndarray:
+        and_vector = vector_1 == vector_2
+
+        and_vector = np.ndarray.astype(and_vector, dtype=np.int64)
+        and_vector[vector_1 == 0] = 0.0
+
+        return np.ndarray.astype(and_vector, dtype=np.float64)
+
+    def _cat_nom_bin_sym(
+        self, vector_1: np.ndarray, vector_2: np.ndarray
+    ) -> np.ndarray:
+
+        eq = np.array(vector_1 == vector_2)
+
+        eq = np.ndarray.astype(eq, dtype=np.int64)
+        eq = np.ndarray.astype(eq, dtype=np.float64)
+        return eq
+
+    def _ratio_scale(
+        self,
+        vector_1: np.ndarray,
+        vector_2: np.ndarray,
+        val_range: np.ndarray,
+        h: np.ndarray,
+    ) -> np.ndarray:
+        absolute = np.abs(vector_1 - vector_2)
+
+        ones = absolute >= val_range
+        zeros = absolute <= h
+
+        if vector_1.size == 1:
+            if ones:
+                return np.array(1.0)
+            elif zeros:
+                return np.array(0.0)
+            else:
+                absolute /= val_range
         else:
-            return 0.0
+            # print(absolute[~zeros & ~ones], val_range[~zeros & ~ones])
+            absolute[~zeros & ~ones] /= val_range[~zeros & ~ones]
+            absolute[zeros] = 0.0
+            absolute[ones] = 1.0
+        return 1.0 - absolute
 
-    def _cat_nom(self, value_1, value_2) -> float:
-        self._add_sigma()
-        return 1.0 if np.isclose(value_1, value_2) else 0.0
-
-    def _ratio_scale(self, value_1, value_2, val_range, h) -> float:
-        self._add_sigma()
-        absolute = np.abs(value_1 - value_2)
-        if absolute >= val_range:
-            return 0.0
-        elif absolute <= h:
-            return 1.0
-        else:
-            return 1.0 - absolute / val_range
-
-    def _add_sigma(self):
-        self._sigma_sum += 1
-
-    def _reset_sigma(self):
-        self._sigma_sum = 0
-
-    def _S_k(self, value_1, value_2, k):
+    def _S_k(self, vector_1: np.ndarray, vector_2: np.ndarray, k: np.int64):
         return (
             self._ratio_scale(
-                value_1[k], value_2[k], self.ranges_[k], self.h_[k]
+                np.array(vector_1[k]),
+                np.array(vector_2[k]),
+                np.array(self.ranges_[k]),
+                np.array(self.h_[k]),
             )
             if self.dtypes[k] == DataType.RATIO_SCALE
-            else self._cat_nom(value_1[k], value_2[k])
+            else self._cat_nom_bin_sym(vector_1[k], vector_2[k])
         )
 
     def _cpcc(self, weights, X, t=None, pbar=None):
@@ -214,7 +244,7 @@ class GowerMetric:
         Z = linkage(x, method="average", metric=self)
         return cophenet(Z, x)
 
-    def _cpcc_derivative(self, weights, X, t, pbar: tqdm):
+    def _cpcc_jac(self, weights, X, t, pbar: tqdm):
         x = pdist(X, metric=self)
         x_ = np.average(x)
         t_ = np.average(t)
@@ -254,6 +284,26 @@ class GowerMetric:
                 for _ in range(k)
             ]
         )
+
+    def _select_number_of_clusters(self, X):
+        Z = linkage(X, method="average", metric=self)
+
+        # So scores[i] refers to score for max i clusters
+        scores = [0.0, 0.0, 0.0]
+
+        for i in range(3, 10):
+            pred_labels = fcluster(Z, t=i, criterion="maxclust")
+            if len(np.unique(pred_labels)) > 1:
+                scores.append(silhouette_score(X, pred_labels, metric=self))
+            else:
+                scores.append(0.0)
+        scores = np.array(scores)
+
+        self.number_of_clusters_ = np.argmax(scores)
+
+        X_values = np.linspace(3, 10, 7)
+        plt.plot(X_values, scores[3:])
+        plt.show()
 
     def _select_weights(self, X):
         with tqdm(total=100, ncols=100) as pbar:
@@ -304,7 +354,7 @@ class GowerMetric:
                     self.weights_,
                     args=(X, initial_weights_scores[i][1], pbar),
                     method="L-BFGS-B",
-                    jac=self._cpcc_derivative,
+                    jac=self._cpcc_jac,
                     options={"gtol": 1e-04},
                     bounds=((0, 1) for _ in range(self.n_features_in_)),
                 )
@@ -330,9 +380,17 @@ class GowerMetric:
         self.weights_ = np.loadtxt(file_name, delimiter=",", dtype=np.float64)
 
     def _save_weights(self):
+        weights_dir_name = (
+            str(Path().absolute()) + "\\gower_metric_saved_weights"
+        )
+        if not os.path.exists(weights_dir_name):
+            os.mkdir(weights_dir_name)
+
         rand_id = np.random.randint(0, 100000)
         converted_weights = np.asarray([list(self.weights_)])
-        dest_file_name = "saved_weights_" + str(rand_id) + ".csv"
+        dest_file_name = (
+            weights_dir_name + "\\saved_weights_" + str(rand_id) + ".csv"
+        )
         np.savetxt(dest_file_name, converted_weights, delimiter=",")
         print(f"Weights saved in {dest_file_name}")
 
@@ -380,7 +438,12 @@ def silhouette_test(Z, df, metric_func):
 
     for i in range(3, 10):
         pred_labels = fcluster(Z, t=i, criterion="maxclust")
-        scores.append(silhouette_score(df, pred_labels, metric=metric_func))
+        if len(np.unique(pred_labels)) > 1:
+            scores.append(
+                silhouette_score(df, pred_labels, metric=metric_func)
+            )
+        else:
+            scores.append(0.0)
 
     scores = np.array(scores)
     X_values = np.linspace(3, 10, 7)
@@ -437,14 +500,23 @@ def pca_test(df: np.ndarray, y: np.ndarray = None, labels=None):
     plt.show()
 
 
-def mertic_test(dataset: Dataset, data: Data, number_of_records: int = None):
+def mertic_test(
+    dataset: Dataset,
+    data: Data,
+    number_of_records: int = None,
+    precomputed_weights: str = None,
+):
     if number_of_records is None:
         number_of_records = len(data.data[dataset.name])
 
     df = np.copy(data.data[dataset.name][:number_of_records])
     df = fill_na(df)
 
-    gower = GowerMetric(data.cols_type[dataset.name], "iqr")
+    gower = GowerMetric(
+        data.cols_type[dataset.name],
+        "iqr",
+        _precomputed_weights_file=precomputed_weights,
+    )
 
     if dataset.metric == "gower":
         metric_func = gower
@@ -539,8 +611,12 @@ def mertic_test(dataset: Dataset, data: Data, number_of_records: int = None):
         # dn = dendrogram(Z, no_plot=True)
         # plt.show()
 
+        num_of_clusters = (
+            gower.number_of_clusters_ if dataset.metric == "gower" else 3
+        )
+
         dist_x = pdist(df, metric=metric_func)
-        pred_labels = fcluster(Z, t=3, criterion="maxclust")
+        pred_labels = fcluster(Z, t=num_of_clusters, criterion="maxclust")
 
         c, cophenetic_distances = cpcc(dist_x, Z)
         i = ioa(dist_x, cophenetic_distances)
@@ -555,7 +631,7 @@ def mertic_test(dataset: Dataset, data: Data, number_of_records: int = None):
             print(f"Silhouette: {s}")
             print(f"Calinski-Harabasz: {cal_halab}")
             print(f"Davies-Bouldin index: {dav_bould}")
-            silhouette_test(Z, df, metric_func)
+            # silhouette_test(Z, df, metric_func)
             pca_test(df, y, pred_labels)
         else:
             print("Predicted labels = 1!")
@@ -617,7 +693,7 @@ if __name__ == "__main__":
 
     print(f"Loaded sets: {list(D.data.keys())}")
 
-    test_dataset_name = "infert"
+    test_dataset_name = "quakes"
     test_type = "cluster"
     labeled = False
 
@@ -631,7 +707,12 @@ if __name__ == "__main__":
 
     n = 250
 
-    mertic_test(ds1, D, n)
+    mertic_test(
+        ds1,
+        D,
+        n,
+        precomputed_weights="gower_metric_saved_weights/saved_weights_quakes.csv",
+    )
     # mertic_test(ds2, D, n)
     # mertic_test(ds3, D, n)
     # mertic_test(ds4, D, n)
