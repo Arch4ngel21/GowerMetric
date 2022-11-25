@@ -8,26 +8,31 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy.optimize import minimize
 
+from enum import Enum
 
-def metric(vec_1, vec_2):
-    print(f"{vec_1[0]} - {type(vec_1[0])}\n{vec_2} - {type(vec_2)}")
-    return np.abs(np.sum(vec_1 - vec_2))
-
-
-def func(w):
-    print("func", w[0] ** 2 + w[1] ** 2)
-    return w[0] ** 2 + w[1] ** 2
+import timeit
 
 
-def derivative(w):
-    print("deriv", np.array([2 * w[0] + w[1] ** 2, w[0] ** 2 + 2 * w[1] ** 0]))
-    return np.array([2 * w[0] + w[1] ** 2, w[0] ** 2 + 2 * w[1] ** 0])
+class SimpleEnum(Enum):
+    example_0 = 0
+    example_1 = 1
+    example_2 = 2
 
 
 if __name__ == "__main__":
-    with tqdm(total=100, ncols=100) as pbar:
-        with tqdm(total=100, ncols=100, position=1) as pbar2:
-            for i in range(10):
-                sleep(0.3)
-                pbar.update(10)
-            pbar2.update(50)
+    # N = 344375
+    # vec_1 = np.arange(5)
+    # vec_2 = np.arange(5) + 3
+    #
+    # truth_table = np.array([True for _ in range(5)])
+    #
+    # start = timeit.default_timer()
+    # for _ in range(344375):
+    #     vec_3 = vec_1 - vec_2
+    #     vec_3 = np.abs(vec_1, vec_2)
+    # print(timeit.default_timer() - start)
+
+    a = np.array([1, 2, 3, 4, 5])
+    b = np.array([True, False, True, True, True])
+
+    print(a * b)
