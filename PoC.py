@@ -1,172 +1,362 @@
+import os.path
+import timeit
+from os import listdir
+from os.path import isfile
+from pathlib import Path
+from typing import List, Optional
+
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
-from enum import Enum
+import sklearn.utils.validation
+from scipy.spatial.distance import pdist
+from scipy.cluster.hierarchy import (
+    linkage,
+    cophenet,
+    fcluster,
+)
+from sklearn.decomposition import PCA
+from sklearn.metrics import (
+    silhouette_score,
+    calinski_harabasz_score,
+    davies_bouldin_score,
+)
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier, NearestNeighbors
+from sklearn.preprocessing import OrdinalEncoder, StandardScaler
+
+from utils import Dataset, DataType, Data
+from GowerMetric import GowerMetric
 
 
-class DataType(Enum):
-    BINARY_SYMMETRIC = 0
-    BINARY_ASYMMETRIC = 1
-    CATEGORICAL_NOMINAL = 2
-    RATIO_SCALE = 3
+def bin_dist(vector_1: np.ndarray, vector_2: np.ndarray):
+    # bool array for not-null values
+    non_null_map_1 = vector_1 != -1
+    non_null_map_2 = vector_2 != -1
+    non_null_map = non_null_map_1 & non_null_map_2
+
+    # vec_1 and vec_2 with only not-null values
+    non_null_1 = vector_1[non_null_map]
+    non_null_2 = vector_2[non_null_map]
+
+    # count null values
+    null_count = (~non_null_map_1 | ~non_null_map_2).sum()
+
+    # return sum of dissimilarities between vec_1 and vec_2 + number of unique null fields
+    return ((~np.isclose(non_null_1, non_null_2)).sum() + null_count) / len(
+        vector_1
+    )
 
 
-class GowerMetric:
-    def __init__(self, data_type: np.array):
-        self.__data_type = data_type        # initialize with np.array of column data types
-        self.__iqrs = []                    # iqr values in .__ratio_scale()
-        self.__h = []                       # h values in .__ratio_scale()
-        self.__data_fitted = False          # flag for running .fit()
-        self.__sigma_sum = 0                # counter for existing values in vector
+# Simple function for calculating dissimilarity matrix
+def make_matrix(data_frame: np.ndarray, metric) -> np.array:
+    return pdist(data_frame, metric)
 
-    def __bin_sym(self, value_1, value_2) -> float:
-        if value_1 is None or value_2 is None:
-            return 0.0
 
-        self.__add_sigma()
-        return 1.0 if value_1 == value_2 else 0.0
+def cpcc(X, Z):
+    return cophenet(Z, X)
 
-    def __bin_asym(self, value_1, value_2) -> float:
-        if value_1 is None or value_2 is None:
-            return 0.0
 
-        if value_1 == value_2 and value_1 == 1:
-            self.__add_sigma()
-            return 1.0
+def ioa(O, P):
+    O_ = np.average(O)
+    return 1 - np.sum(np.power(P - O, 2)) / np.sum(
+        np.power(np.absolute(P - O_) + np.absolute(O - O_), 2,)
+    )
+
+
+def silhouette_test(Z, df, metric_func):
+    scores = []
+
+    for i in range(3, 10):
+        pred_labels = fcluster(Z, t=i, criterion="maxclust")
+        if len(np.unique(pred_labels)) > 1:
+            scores.append(
+                silhouette_score(df, pred_labels, metric=metric_func)
+            )
         else:
-            return 0.0
+            scores.append(0.0)
 
-    def __cat_nom(self, value_1, value_2) -> float:
-        if value_1 is None or value_2 is None:
-            return 0.0
+    scores = np.array(scores)
+    X_values = np.linspace(3, 10, 7)
+    plt.plot(X_values, scores)
+    plt.show()
 
-        self.__add_sigma()
-        return 1.0 if value_1 == value_2 else 0.0
 
-    def __ratio_scale(self, value_1, value_2, iqr, h) -> float:
-        if value_1 is None or value_2 is None:
-            return 0.0
+def pca_test(df: np.ndarray, y: np.ndarray = None, labels=None):
+    if y is None and labels is None:
+        print(
+            "PCA Test Error - data is not labeled neither by y nor by predicted labels!"
+        )
+        return
 
-        self.__add_sigma()
-        absolute = np.abs(value_1 - value_2)
+    colors = list(mcolors.CSS4_COLORS.values())
+    df_cp = df.copy()
 
-        if absolute >= iqr:
-            return 0.0
+    df_cp = StandardScaler().fit_transform(df_cp)
 
-        elif absolute <= h:
-            return 1.0
+    pca = PCA(n_components=2)
+    principal_components = pca.fit_transform(df_cp)
 
-        return 1.0 - absolute / iqr
+    if labels is not None:
+        y = labels
+        colors = colors[: np.max(labels)]
+    else:
+        colors = colors[: np.max(y)]
 
-    def __add_sigma(self):
-        self.__sigma_sum += 1
+    y = y.copy()
+    y = y.reshape(-1, 1)
 
-    def __reset_sigma(self):
-        self.__sigma_sum = 0
+    principal_components = np.concatenate((principal_components, y), axis=1)
 
-    def fit(self, x):
-        for i in range(self.__data_type.size):
-            if self.__data_type[i] == DataType.RATIO_SCALE:
+    for e, color in enumerate(colors):
+        plt.scatter(
+            x=[
+                principal_component[0]
+                for principal_component in principal_components[
+                    principal_components[:, 2] == e + 1
+                ]
+            ],
+            y=[
+                principal_component[1]
+                for principal_component in principal_components[
+                    principal_components[:, 2] == e + 1
+                ]
+            ],
+            c=color,
+            label=str(e + 1),
+        )
 
-                # IQR (g_t) - Interquartile Range
-                q1, q3 = np.percentile(x[:, i].astype(np.int32), [25, 75])
-                self.__iqrs.append(q3 - q1)
+    print(np.bincount(labels))
+    plt.legend()
+    plt.show()
 
-                # h_t - bandwidth in the kernel density estimation (Marcello D’Orazio - p. 9)
-                if np.any(x[:, i].astype(np.int32) < 0):
-                    c = 0.9
-                else:
-                    c = 1.06
 
-                s = np.std(x[:, i].astype(np.int32))
-                n = x[:, i].size
-                self.__h.append(c / n ** (1/5) * np.min([s, self.__iqrs[-1] / 1.34]))
+def mertic_test(
+    gower, dataset: Dataset, data: Data, number_of_records: int = None,
+):
+    if number_of_records is None:
+        number_of_records = len(data.data[dataset.name])
 
-        self.__data_fitted = True
-        print("IQRS:", self.__iqrs)
-        print("h:", self.__h)
+    df = np.copy(data.data[dataset.name][:number_of_records])
+    df = fill_na(df)
 
-    def __call__(
-        self, vector_1: np.array, vector_2: np.array,
-    ):
-        if len(vector_1) != len(vector_2):
-            print("Vector sizes don't match!")
-            return -1
+    # gower = GowerMetric(
+    #     data.cols_type[dataset.name],
+    #     "iqr",
+    #     _precomputed_weights_file=precomputed_weights,
+    # )
 
-        if not self.__data_fitted:
-            print("Use GowerMetric.fit(x) first to initialize scales for data!")
-            return -1
+    if dataset.metric == "gower":
+        metric_func = gower
+    elif dataset.metric == "bin":
+        metric_func = bin_dist
+    else:
+        metric_func = dataset.metric
 
-        d = 0
-        ratios_index = 0
+    print(
+        f"----------------- Test using {dataset.metric} metric -----------------"
+    )
+    if dataset.task == "bin" or dataset.task == "multivar":
+        enc = OrdinalEncoder()
+        enc.set_params(encoded_missing_value=-1)
 
-        for i in range(len(vector_1)):
+        cat_nom_cols = [
+            i
+            for i in range(len(gower.dtypes))
+            if gower.dtypes[i] == DataType.CATEGORICAL_NOMINAL
+        ] + [len(gower.dtypes)]
+        fit_df = df[:, cat_nom_cols]
 
-            if self.__data_type[i] == DataType.BINARY_SYMMETRIC:
-                d += 1 - self.__bin_sym(vector_1[i], vector_2[i])
-            elif self.__data_type[i] == DataType.BINARY_ASYMMETRIC:
-                d += 1 - self.__bin_asym(vector_1[i], vector_2[i])
-            elif self.__data_type[i] == DataType.CATEGORICAL_NOMINAL:
-                d += 1 - self.__cat_nom(vector_1[i], vector_2[i])
-            elif self.__data_type[i] == DataType.RATIO_SCALE:
-                d += 1 - self.__ratio_scale(
-                    float(vector_1[i]), float(vector_2[i]), self.__iqrs[ratios_index], self.__h[ratios_index]
-                )
-                ratios_index += 1
-            else:
-                print(f"Wrong data type! - {self.__data_type[i]}")
+        enc.fit(fit_df)
+        fit_df = enc.transform(fit_df)
+        df[:, cat_nom_cols] = fit_df
 
-        d /= self.__sigma_sum
-        self.__reset_sigma()
+        y = df[:, -1]
+        df = df[:, :-1]
 
-        return d
+        df = np.ndarray.astype(df, dtype=np.float64)
+        y = np.ndarray.astype(y, dtype=np.float64)
 
-    # Simple function for calculating dissimilarity matrix
-    def make_matrix(self, data_frame: np.ndarray) -> np.array:
-        n = len(data_frame)
-        M = [[0.0 for _ in range(n)] for _ in range(n)]
+        train_set, test_set, y_train_set, y_test_set = train_test_split(
+            df, y, test_size=0.2
+        )
 
-        for i in range(n):
-            for j in range(i):
-                if i != j:
-                    M[i][j] = self.__call__(data_frame[i], data_frame[j])
-                    M[j][i] = M[i][j]
+        if dataset.metric == "gower":
+            gower.fit(train_set)
 
-        return np.array(M, dtype=np.float32)
+        knn = KNeighborsClassifier(n_neighbors=5, metric=metric_func)
+        knn.fit(train_set, y_train_set)
+
+        score = knn.score(test_set, y_test_set)
+
+        print(f"KNN score: {score}")
+        return score
+
+    elif dataset.task == "reg":
+        train_set, test_set = train_test_split(df, test_size=0.3)
+
+        gower.fit(train_set)
+
+        knn = NearestNeighbors(n_neighbors=5, metric=metric_func)
+        knn.fit(train_set)
+        print(knn.kneighbors(test_set, 5, False))
+
+    elif dataset.task == "cluster":
+        enc = OrdinalEncoder()
+        enc.set_params(encoded_missing_value=-1)
+
+        # Categorical Nominal columns
+        cat_nom_cols = [
+            i
+            for i in range(len(gower.dtypes))
+            if gower.dtypes[i] == DataType.CATEGORICAL_NOMINAL
+        ]
+
+        if dataset.labeled:
+            cat_nom_cols += [len(gower.dtypes)]
+
+        if len(cat_nom_cols) != 0:
+            fit_df = df[:, cat_nom_cols]
+
+            enc.fit(fit_df)
+            fit_df = enc.transform(fit_df)
+            df[:, cat_nom_cols] = fit_df
+
+        y = None
+        if dataset.labeled:
+            y = df[:, -1]
+            df = df[:, :-1]
+            y = np.ndarray.astype(y, dtype=np.float64)
+
+        df = np.ndarray.astype(df, dtype=np.float64)
+
+        start = timeit.default_timer()
+        if dataset.metric == "gower":
+            gower.fit(df)
+        print(f"Performing fit: {timeit.default_timer() - start}")
+
+        # Hierarchical Clustering and dendrogram (without plotting)
+        Z = linkage(df, method="average", metric=metric_func)
+        # plt.figure()
+        # dn = dendrogram(Z, no_plot=True)
+        # plt.show()
+
+        num_of_clusters = (
+            gower.number_of_clusters_ if dataset.metric == "gower" else 3
+        )
+
+        start = timeit.default_timer()
+        dist_x = pdist(df, metric=metric_func)
+        print(f"Calculating dist matrix: {timeit.default_timer() - start}")
+        pred_labels = fcluster(Z, t=num_of_clusters, criterion="maxclust")
+
+        c, cophenetic_distances = cpcc(dist_x, Z)
+        i = ioa(dist_x, cophenetic_distances)
+
+        print(f"CPCC: {c}")
+        print(f"IoA: {i}")
+
+        if np.max(pred_labels) > 1:
+            s = silhouette_score(df, pred_labels, metric=metric_func)
+            cal_halab = calinski_harabasz_score(df, pred_labels)
+            dav_bould = davies_bouldin_score(df, pred_labels)
+            print(f"Silhouette: {s}")
+            print(f"Calinski-Harabasz: {cal_halab}")
+            print(f"Davies-Bouldin index: {dav_bould}")
+            # silhouette_test(Z, df, metric_func)
+            # pca_test(df, y, pred_labels)
+        else:
+            print("Predicted labels = 1!")
+
+        # plt.title(dataset.metric)
+        # plt.imshow(squareform(cophenetic_distances), cmap='hot')
+        # plt.show()
+
+    else:
+        print("Wrong task!")
+    print(
+        "--------------------------------------------------------------------\n"
+    )
+
+
+def load_dataset(dataset_name: str):
+    loaded_data = np.loadtxt(dataset_name, delimiter=",", dtype=object)
+    cols_type = np.loadtxt(
+        dataset_name[:-4] + "_cols_type.csv", delimiter=",", dtype=object
+    )
+    cols_type = np.array([Data.cols_type_maping[k] for k in cols_type])
+    labels = loaded_data[1, :]
+    loaded_data = loaded_data[1:, :]
+    return loaded_data, cols_type, labels
+
+
+def fill_na(data: np.array):
+    data[data == ""] = -1
+    return data
+
+
+def fill_nan(data: np.array):
+    data[np.isnan(data)] = -1
+    return data
+
+
+def load_sets():
+    D_data = {}
+    D_cols_type = {}
+    D_labels = {}
+
+    for file in listdir(os.path.abspath("datasets")):
+        if (
+            isfile(os.path.abspath("datasets") + "/" + file)
+            and "_cols_type" not in file
+        ):
+            (
+                D_data[file[:-4]],
+                D_cols_type[file[:-4]],
+                D_labels[file[:-4]],
+            ) = load_dataset(os.path.abspath("datasets") + "/" + file)
+    D = Data(D_data, D_cols_type, D_labels)
+    return D
 
 
 if __name__ == "__main__":
-    #   gender / age / grade
-    data = np.array(
-        [
-            ["F", 15, 5],
-            ["F", 36, 3],
-            ["F", 58, 2],
-            ["F", 78, 2],
-            ["F", 100, 4],
-            ["M", 15, 3],
-            ["M", 36, 2],
-            ["M", 58, 1],
-            ["M", 78, 2],
-            ["M", 100, 5],
-        ]
+
+    D = load_sets()
+    # np.random.seed(1234)        # TODO - delete after testing
+
+    print(f"Loaded sets: {list(D.data.keys())}")
+
+    test_dataset_name = "esoph"
+    test_type = "cluster"
+    labeled = False  # if dataset has column labels in same file as columns
+
+    ds1 = Dataset(test_dataset_name, test_type, "gower", labeled)
+    ds2 = Dataset(test_dataset_name, test_type, "bin", labeled)
+    ds3 = Dataset(test_dataset_name, test_type, "euclidean", labeled)
+    ds4 = Dataset(test_dataset_name, test_type, "cosine", labeled)
+    ds5 = Dataset(test_dataset_name, test_type, "minkowski", labeled)
+    ds6 = Dataset(test_dataset_name, test_type, "dice", labeled)
+    ds7 = Dataset(test_dataset_name, test_type, "jaccard", labeled)
+
+    n = 250
+
+    gower = GowerMetric(
+        D.cols_type[ds1.name],
+        "kde",
+        weights="cpcc",
+        # precomputed_weights_file="gower_metric_saved_weights/saved_weights_quakes.csv",
     )
 
-    types = np.array(
-        [DataType.CATEGORICAL_NOMINAL, DataType.RATIO_SCALE, DataType.RATIO_SCALE]
+    print(
+        "=========================== Vectorized ============================="
     )
-    gower = GowerMetric(types)
-    gower.fit(data)
+    mertic_test(
+        gower, ds1, D, n,
+    )
 
-    # ------------------ Testowanie ------------------
-
-    # Macierz odległości
-    gower_matrix = gower.make_matrix(data)
-
-    print("\t\t\t", *data)
-    for e, lane in enumerate(gower_matrix):
-        print(data[e], end=' ')
-        for val in lane:
-            print('{:.4f}'.format(val), end=',\t\t ')
-        print("")
-
-    # Pojedyncza odległość
-    # print(gower(data[2], data[8]))
+    # mertic_test(ds2, D, n)
+    # mertic_test(ds3, D, n)
+    # mertic_test(ds4, D, n)
+    # mertic_test(ds5, D, n)
+    # mertic_test(ds6, D, n)
+    # mertic_test(ds7, D, n)
