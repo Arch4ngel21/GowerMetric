@@ -13,6 +13,8 @@ from sklearn.neighbors import KernelDensity
 from utils import DataType
 from weights import GowerMetricWeights
 
+from numba_metric_func_tests import gower_metric_call_func_numba
+
 
 @njit
 def gower_metric_call_func(

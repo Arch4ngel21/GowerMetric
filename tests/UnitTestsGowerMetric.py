@@ -8,6 +8,7 @@ from utils import DataType
 
 import pandas as pd
 
+
 def test_cat_nom():
     data = np.array(
         [
@@ -254,11 +255,9 @@ def test_nan_values():
     enc.fit(data.iloc[:, [0]])
     data.iloc[:, [0]] = enc.transform(data.iloc[:, [0]])
     data = data.to_numpy(dtype=np.float64)
-    # print('\n', data)
 
     gower.fit(data)
     res = gower(data[0], data[1])
 
     assert np.isclose(res, np.sum(dist / ranges) / 7.0)
-
 
