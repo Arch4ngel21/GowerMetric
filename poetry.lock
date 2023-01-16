@@ -133,28 +133,9 @@ numpy = "*"
 scipy = "*"
 
 [[package]]
-name = "icc-rt"
-version = "2019.0"
-description = "Runtimes for Intel(R) Compilers"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-intel-openmp = "*"
-
-[[package]]
 name = "iniconfig"
 version = "1.1.1"
 description = "iniconfig: brain-dead simple config-ini parsing"
-category = "main"
-optional = false
-python-versions = "*"
-
-[[package]]
-name = "intel-openmp"
-version = "2023.0.0"
-description = "Intel® OpenMP* Runtime Library"
 category = "main"
 optional = false
 python-versions = "*"
@@ -166,6 +147,19 @@ description = "Lightweight pipelining with Python functions"
 category = "main"
 optional = false
 python-versions = ">=3.7"
+
+[[package]]
+name = "KDEpy"
+version = "1.1.0"
+description = "Kernel Density Estimation in Python."
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+matplotlib = ">=2.2.0"
+numpy = ">=1.14.2"
+scipy = ">=1.0.1"
 
 [[package]]
 name = "kiwisolver"
@@ -475,7 +469,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "d375d3cd9d67dc6e298b130230c942eb31eacbfd708c664bf1d2e11dc3fa4fe3"
+content-hash = "543ecb195a75481886921ba7fb8c8f545a704857d49b9d8c97491c2ce31e368a"
 
 [metadata.files]
 attrs = [
@@ -643,23 +637,81 @@ fonttools = [
 ica = [
     {file = "ica-0.5.tar.gz", hash = "sha256:88c4ba6b3ee1b0f9a26861ddc3cfa60a45565eb28ae88686f29b31d4dd44ef2a"},
 ]
-icc-rt = [
-    {file = "icc_rt-2019.0-py2.py3-none-macosx_10_12_intel.macosx_10_12_x86_64.whl", hash = "sha256:e812350874c4d9801a06f2af1530e38832e7402f888b5f0f351cbd69a7e37375"},
-    {file = "icc_rt-2019.0-py2.py3-none-manylinux1_x86_64.whl", hash = "sha256:4b7522cf02d71d418dee88d1e42a52f8513479f392ac6234b8d09329cb551e03"},
-    {file = "icc_rt-2019.0-py2.py3-none-win_amd64.whl", hash = "sha256:9d2ec116a62800b8052498ace1cb3064a32ed61ceb4f7d916fa90de52f157220"},
-]
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
     {file = "iniconfig-1.1.1.tar.gz", hash = "sha256:bc3af051d7d14b2ee5ef9969666def0cd1a000e121eaea580d4a313df4b37f32"},
 ]
-intel-openmp = [
-    {file = "intel_openmp-2023.0.0-py2.py3-none-macosx_10_15_x86_64.macosx_11_0_x86_64.whl", hash = "sha256:77131c2cda75ace2060f6e9cdcc9f9c672ec838c4602fc544ce0858cfe8f416e"},
-    {file = "intel_openmp-2023.0.0-py2.py3-none-manylinux1_i686.whl", hash = "sha256:adfb32b0dde6b3a95ced62608b05a45a7cfad928054136ddbfe0563e16cbf33c"},
-    {file = "intel_openmp-2023.0.0-py2.py3-none-manylinux1_x86_64.whl", hash = "sha256:1ebce47df0b5ddad77992a70689fd3185df25f47cf901dd8384fd6d05a974f81"},
-]
 joblib = [
     {file = "joblib-1.2.0-py3-none-any.whl", hash = "sha256:091138ed78f800342968c523bdde947e7a305b8594b910a0fea2ab83c3c6d385"},
     {file = "joblib-1.2.0.tar.gz", hash = "sha256:e1cee4a79e4af22881164f218d4311f60074197fb707e082e803b61f6d137018"},
+]
+KDEpy = [
+    {file = "KDEpy-1.1.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:34ded201bba65f2ab7d1c2183fb01a0e8e807cc2fe2562316e0ef2ddfb2dd977"},
+    {file = "KDEpy-1.1.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:b3e426dc9e077a1a7ccbbb5655ff86abc265941cce68a47015abffabe9841f5f"},
+    {file = "KDEpy-1.1.0-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:b69eb0b42c71b82a2b1b02b3da870d8fda510d62992517cd997ae58721dc4bc5"},
+    {file = "KDEpy-1.1.0-cp310-cp310-musllinux_1_1_i686.whl", hash = "sha256:51f99be64b49860ebb3f5c80a94a1a037edd8e3fb472b24864afa13afcf5f385"},
+    {file = "KDEpy-1.1.0-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:79947869b3c2dbaaf981f46f195347545550a899bb7abdf2ce26284280aa733b"},
+    {file = "KDEpy-1.1.0-cp310-cp310-win32.whl", hash = "sha256:2dfc8c106dcdb922784c3235e51a1409c972dd0f715a4562f363a596f6478b35"},
+    {file = "KDEpy-1.1.0-cp310-cp310-win_amd64.whl", hash = "sha256:d0171d3e75e1fa850f30854a490cbf8c83ff7f910a4ed96f160c855a822c6515"},
+    {file = "KDEpy-1.1.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:b4091bf1ed969761ee5283fcb140f8343cf9958a19ee17531bc95e7b35180545"},
+    {file = "KDEpy-1.1.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4593ecbea4759540792f4f98415bbb41711ee3355062ecf426eb93603b25667e"},
+    {file = "KDEpy-1.1.0-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:abd1d683e435d079e5beff035b8d1eb0c564bf49681082e9e666308dc502411a"},
+    {file = "KDEpy-1.1.0-cp311-cp311-musllinux_1_1_i686.whl", hash = "sha256:491b449024e96f7a3aef305e148bec54af80c4746c29e7b5b016a0620eafc9e0"},
+    {file = "KDEpy-1.1.0-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:7fca022adf90e061dee2161703b46441ca172c8e858fed8c6ac1dd680c11e734"},
+    {file = "KDEpy-1.1.0-cp311-cp311-win32.whl", hash = "sha256:6812c4a8f794a13b302da4ddcd4d4af3aec8e01f0c1aa001967b6266ece8e78c"},
+    {file = "KDEpy-1.1.0-cp311-cp311-win_amd64.whl", hash = "sha256:a0c20daec92fc0521fc30c0d51b9d38f1d9da5b4229d8fc6d9adeee395214de2"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:3313707d3aebb8c9e78debdca15f56ee8da677e958645aef511cb3e22989e276"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux1_i686.whl", hash = "sha256:7e24e42b3143f5e1d2ce6d4aa0b4c9ef241af4d901df8467e0dc2d6d240bb1fb"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux1_x86_64.whl", hash = "sha256:79111ea529a905a7b9005488c400ebec14a428fb7c3c10ca2480ec77a6da2bbf"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux2010_i686.whl", hash = "sha256:9c8af5834577844732238ee602ea7bf35fa54194c9e9499d37aff1681b2fcc56"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux2010_x86_64.whl", hash = "sha256:535bcc4002aa5580ef3307391ef631d04a2cd022bfdb1d5aa64f2731d1f09cbc"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:baed7daf78ddf0b9ea96336e38441ec504dc603b92bc8c45f637ae3429c4d6d2"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:d79291eb2d63d13fa58d511df83547415f42b6440cedbaecf42e07942138ee80"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:dc24a883741d68c583caad4287fd4a2aa046a3fac76259751caa04e42d033466"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:bcfc5711432d58177380f72f5b917f7b828c780746fe0a414346037bb8be2084"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-musllinux_1_1_i686.whl", hash = "sha256:9893c721fdef91387bb578d0b8e824e99425113d464ceb54361cf570444c0859"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-musllinux_1_1_x86_64.whl", hash = "sha256:af3dfab8793e8525ed500e31bc52c938c5d6b855661201ed35acd7b843d539ef"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-win32.whl", hash = "sha256:f2f426c49b9fbe3077974d4aad45b8725eec98ee3ca7f8026a8c2062b40a0eaa"},
+    {file = "KDEpy-1.1.0-cp36-cp36m-win_amd64.whl", hash = "sha256:c2561b98c717f0fa3ccd9baa12c8cf29d178120316424bedf08a4c37c327b311"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-macosx_10_9_x86_64.whl", hash = "sha256:b9b10f13838d3231177f119b5cf0f094973c886110e04ca145f9facbe2841ab9"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux1_i686.whl", hash = "sha256:2900ad1bed4d5f312ec588069bf307ce994b820222d8faae7ec41ae5fea7b2e0"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux1_x86_64.whl", hash = "sha256:031063063d9da1c8ab41ef4987f9566489945fe0f9b1c5161b7327def91eeef6"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux2010_i686.whl", hash = "sha256:c21c852caf818c8de2ed144a6c156d6fd41d31837e3255b2a211258fcdf3aa74"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux2010_x86_64.whl", hash = "sha256:cb1b68990c1119db7dab39f15547ec67aa2950eb9ad5373d09e5c2361b808069"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:283ebf9a71b730f24236acb35d7e4ca542301f324d1bbc04b82df9a42f47cf74"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:eeff5f79a11ba745f512e77c8a16b3737c09f6317221f2674a60f0673ca36a5b"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:26b6a135bf45108b902d5370c59a70802f4b0f0e62ea569ff8d1cf2564f45a94"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:ebb8ac4e0a8fd6a00f59c899a2d90fab06f4224b59a62a23531a97b9b9bb3586"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-musllinux_1_1_i686.whl", hash = "sha256:e84b806756a81fea20266466e28cf9d0a8b6068cc3e1b7d7c54e8cbfe8c04e25"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-musllinux_1_1_x86_64.whl", hash = "sha256:f587458e14a077298495adead84ce24840aa1781918843585cf40f57da063e0b"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-win32.whl", hash = "sha256:7b9f6c7e50d74746a0de795bc4b10723c4a567272cf6838843aab62572e42a93"},
+    {file = "KDEpy-1.1.0-cp37-cp37m-win_amd64.whl", hash = "sha256:d5346f9d47ae5a48917d7e642c8d080457c0fbf86dfb66818b9ec6578a90aa64"},
+    {file = "KDEpy-1.1.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:1d05ac8fdbd6d130056f3cf4010b93b48126928d4cef16a10634da06875e50dc"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux1_i686.whl", hash = "sha256:f915ae2c5d6daefee49d87d94e41382356b636656a69758baee0cd8213afeaf1"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux1_x86_64.whl", hash = "sha256:e8c9e293df1ad9f5c8e2c8d3515016307098e368c4d2c1fa0dd9923840c1e86f"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux2010_i686.whl", hash = "sha256:8104b2256613ac3c644736ae695dc37f260079e9d3617eb912c636218dc15189"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux2010_x86_64.whl", hash = "sha256:1da25f8a1ef08b1e712a94cca4f22efc621c68abfd79c7e815d471dd8f96ccc7"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:faa1875e3ac404ec0610bce7bbcf9bc94ced6e67867a155e476c3ddd1d4abfe1"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux_2_5_i686.manylinux1_i686.manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:be03c2180bfde0ea4e99555ea043c2afbb9df793abca3e3dc6e25e3384534e90"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:ac4f6315df155d506502de2438ccb89b0cf5a70f979c1508364e1927e908d6fa"},
+    {file = "KDEpy-1.1.0-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:656bba871c686ab74f002fd269c518a229769e53e70d1fa37ba9a1a150a2459f"},
+    {file = "KDEpy-1.1.0-cp38-cp38-musllinux_1_1_i686.whl", hash = "sha256:cc219aae9f7a83665253899b7029f2be8adcdcad5f6b9f9c1b9a8fb9e5f16cda"},
+    {file = "KDEpy-1.1.0-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:ec0c1ba5277ad0afbf6f736e6fda1666aa55014c48d860b68469948af42738e2"},
+    {file = "KDEpy-1.1.0-cp38-cp38-win32.whl", hash = "sha256:d1169a10e8d49d943a81bbf298649e90916ca6fee138a14d7abcba3ee07058af"},
+    {file = "KDEpy-1.1.0-cp38-cp38-win_amd64.whl", hash = "sha256:3fb0fadc1896894aba2f8b2ef9ab8b8267353728eb1119a9220309ab0de48d2a"},
+    {file = "KDEpy-1.1.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:b56f502e8f2ea3c2af18ae16c281456062d95aaac13b837195aa0dec90bc8c55"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux1_i686.whl", hash = "sha256:ea265fe99be2a7696eece83d494abb95568c39c8d87f4ebca28c31e4698ce851"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux1_x86_64.whl", hash = "sha256:35068626e5cd08e04388c96bc61031e21d39e4d00eded8d93ab82155f3654bf2"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux2010_i686.whl", hash = "sha256:3453fb7220b3f65ad92aeb9fe12a3812dc2f60afa03f6613495554a13309c22a"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux2010_x86_64.whl", hash = "sha256:e18553ab7280ad09b12ca1facf787faf485531901355e9d948450626f56f6114"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f8340cb9de7de89f5f0e0a4396d980a637d6bab33e9ae3e117b92716010062cd"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_12_i686.manylinux2010_i686.whl", hash = "sha256:32c7e3d0c4eef330b1b69f0b03884c1725d941918d34d3f520c28d9433386d29"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c615116201994a6b3b4b7cc84e12b130a22f91cebfdf12035a3858ce904b5d48"},
+    {file = "KDEpy-1.1.0-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:68bae4d35dc7e2e7fef88c8341743b78239a8c9ba6f6f6a9bca5e9269a6ab1d5"},
+    {file = "KDEpy-1.1.0-cp39-cp39-musllinux_1_1_i686.whl", hash = "sha256:d7917f4646c05e29b4edb0cd63222910efdb408be02b6fb2f1c6c646c09e2137"},
+    {file = "KDEpy-1.1.0-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:6919c5ff549e168f6ec7785f296a17db6a612291fba1ae17f540bf2680f7dcfa"},
+    {file = "KDEpy-1.1.0-cp39-cp39-win32.whl", hash = "sha256:907e248e1cd1ef027d5f283f618881ff52e51d1546b8e85c3cd218d1adb145af"},
+    {file = "KDEpy-1.1.0-cp39-cp39-win_amd64.whl", hash = "sha256:ec7f709050e85e14c6bcbd593958785438ea38e028f48388f7d0adc5f67a5810"},
 ]
 kiwisolver = [
     {file = "kiwisolver-1.4.4-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:2f5e60fabb7343a836360c4f0919b8cd0d6dbf08ad2ca6b9cf90bf0c76a3c4f6"},

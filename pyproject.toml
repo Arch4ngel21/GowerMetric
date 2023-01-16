@@ -17,6 +17,7 @@ pytest = "^7.2.0"
 Cython = "^0.29.32"
 ica = "^0.5"
 numba = "^0.56.4"
+KDEpy = "^1.1.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.8.0"

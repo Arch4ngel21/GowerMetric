@@ -18,19 +18,21 @@ from utils import DataType
 
 
 @njit
-def gower_metric_call_func(vector_1: np.ndarray,
-                           vector_2: np.ndarray,
-                           weights: np.ndarray,
-                           cat_nom_num: int,
-                           bin_asym_num: int,
-                           ratio_scale_num: int,
-                           cat_nom_idx: np.ndarray,
-                           bin_asym_idx: np.ndarray,
-                           ratio_scale_idx: np.ndarray,
-                           ratio_scale_normalization: str,
-                           ranges_: np.ndarray,
-                           h_: np.ndarray,
-                           n_features_in_: int):
+def gower_metric_call_func(
+    vector_1: np.ndarray,
+    vector_2: np.ndarray,
+    weights: np.ndarray,
+    cat_nom_num: int,
+    bin_asym_num: int,
+    ratio_scale_num: int,
+    cat_nom_idx: np.ndarray,
+    bin_asym_idx: np.ndarray,
+    ratio_scale_idx: np.ndarray,
+    ratio_scale_normalization: str,
+    ranges_: np.ndarray,
+    h_: np.ndarray,
+    n_features_in_: int,
+):
     assert n_features_in_ == len(vector_1)
     assert n_features_in_ == len(vector_2)
 
@@ -53,8 +55,12 @@ def gower_metric_call_func(vector_1: np.ndarray,
         bin_asym_cols_2 = vector_2[bin_asym_idx]
 
         # 0 if x1 == x2 == 1 or x1 != x2, so it's same as 1 if x1 == x2 == 0
-        bin_asym_dist = np.asarray((bin_asym_cols_1 == 0) & (bin_asym_cols_2 == 0), dtype=np.float64)
-        bin_asym_dist[np.isnan(bin_asym_cols_1) | np.isnan(bin_asym_cols_2)] = 1.0
+        bin_asym_dist = np.asarray(
+            (bin_asym_cols_1 == 0) & (bin_asym_cols_2 == 0), dtype=np.float64
+        )
+        bin_asym_dist[
+            np.isnan(bin_asym_cols_1) | np.isnan(bin_asym_cols_2)
+        ] = 1.0
 
         if weights is not None:
             bin_asym_dist = bin_asym_dist @ weights[bin_asym_idx]
@@ -73,7 +79,9 @@ def gower_metric_call_func(vector_1: np.ndarray,
             below_threshold = ratio_dist <= h_
 
         ratio_dist = ratio_dist / ranges_
-        ratio_dist[np.isnan(ratio_scale_cols_1) | np.isnan(ratio_scale_cols_2)] = 1.0
+        ratio_dist[
+            np.isnan(ratio_scale_cols_1) | np.isnan(ratio_scale_cols_2)
+        ] = 1.0
 
         if ratio_scale_normalization == "kde":
             ratio_dist[above_threshold] = 1.0
@@ -101,7 +109,7 @@ class GowerMetricDummy:
         ratio_scale_normalization: str = "range",
         weights: Optional[Union[list, str, np.ndarray]] = None,
         precomputed_weights_file: Optional[str] = None,
-        verbose: int = 0
+        verbose: int = 0,
     ):
         assert (
             weights is None
@@ -183,7 +191,9 @@ class GowerMetricDummy:
             loader.select_number_of_clusters(X)
 
     def __call__(
-        self, vector_1: np.ndarray, vector_2: np.ndarray,
+        self,
+        vector_1: np.ndarray,
+        vector_2: np.ndarray,
     ) -> np.float64:
 
         return gower_metric_call_func(
@@ -199,7 +209,7 @@ class GowerMetricDummy:
             self.ratio_scale_normalization,
             self.ranges_,
             self.h_,
-            self.n_features_in_
+            self.n_features_in_,
         )
 
 
@@ -211,9 +221,7 @@ def _init_weights(k, n_features_in_):
             [
                 np.random.uniform(
                     1 / (3 * n_features_in_),
-                    1
-                    - (n_features_in_ - 1)
-                    / (3 * n_features_in_),
+                    1 - (n_features_in_ - 1) / (3 * n_features_in_),
                 )
                 for _ in prange(n_features_in_)
             ]
@@ -274,7 +282,9 @@ class GowerMetricWeights:
 
     def select_weights(self, X):
         number_of_initial_weights = 10
-        initial_weights = _init_weights(number_of_initial_weights, self.gower.n_features_in_)
+        initial_weights = _init_weights(
+            number_of_initial_weights, self.gower.n_features_in_
+        )
 
         # Every set of initial weights has same ratio, but different scale,
         # so distance matrix init_S will be same for every set, and so will be cophenetic distance
